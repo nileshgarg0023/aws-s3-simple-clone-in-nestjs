@@ -58,16 +58,81 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Support
+# File Upload API Documentation
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+This document provides information about the File Upload API endpoints and their usage.
 
-## Stay in touch
+## Table of Contents
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. [Create Folder](#create-folder)
+2. [Upload File](#upload-file)
+3. [Get File by ID](#get-file-by-id)
+4. [List Files in a Folder](#list-files-in-a-folder)
+5. [Create Folder (Again)](#create-folder-again)
 
-## License
+---
 
-Nest is [MIT licensed](LICENSE).
+## 1. Create Folder
+
+**Endpoint:** `POST /file-upload/create-folder`
+
+**Request/Respone**
+
+```http
+POST http://localhost:3000/file-upload/create-folder
+Content-Type: application/json
+
+{
+    "folderName": "myfolder"
+}
+
+** Response: **
+{
+    "message": "Folder 'myfolder' created successfully"
+}
+```
+
+**Endpoint:** `POST http://localhost:3000/file-upload/upload`
+
+**Request/Response**
+
+```http
+Content-Type: multipart/form-data
+
+[Binary File Data]
+
+select form data in body
+first field
+folderName
+second filed
+file
+
+
+response
+{
+    "id": "b45e3e91-dc49-446e-9d89-ece830daf036",
+    "message": "File uploaded as 0abe8243-9e05-4893-8ebd-6ee29ef00480_2603740_0.jpg",
+    "url": "http://localhost:3000/uploads/myfolder/0abe8243-9e05-4893-8ebd-6ee29ef00480_2603740_0.jpg"
+}
+
+```
+
+**Endpoint:** `DELETE http://localhost:3000/file-upload/file/{id from upload file}`
+
+```http
+ will receive a response that file deleted with it's id
+```
+
+**Endpoint:** `GET http://localhost:3000/file-upload/files/{folderName}`
+
+```http
+ response
+
+[
+    {
+        "filename": "0abe8243-9e05-4893-8ebd-6ee29ef00480_2603740_0.jpg",
+        "size": 42651,
+        "url": "http://localhost:3000/uploads/myfolder/0abe8243-9e05-4893-8ebd-6ee29ef00480_2603740_0.jpg"
+    }
+]
+```
