@@ -9,14 +9,19 @@ import {
 } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
+import { FileRecordModel } from './file-record.model';
+import { FolderModel } from './folder.modal';
 
 @Injectable()
 export class FileUploadService {
-  constructor() {
+  constructor(
+    private readonly fileRecordModel: FileRecordModel,
+    private readonly folderModel: FolderModel,
+  ) {
     this.ensureUploadsDirectoryExists(); // Create the "uploads" directory if it doesn't exist
   }
 
-  private fileRecords: Record<string, string> = {};
+  // private fileRecords: Record<string, string> = {};
 
   private ensureUploadsDirectoryExists() {
     const directory = 'uploads';
@@ -36,45 +41,126 @@ export class FileUploadService {
       throw new BadRequestException(`Folder '${folderName}' does not exist.`);
     }
 
+    // If the folder doesn't exist in MongoDB, create it
+    const folder = await this.folderModel.findFolder(folderName);
+
     const { originalname, buffer } = file;
     const uniqueFilename = `${uuidv4()}_${originalname}`; // Generate a unique filename
 
+    const url = `http://localhost:3000/uploads/${folderName}/${uniqueFilename}`;
     const filePath = `${folderPath}/${uniqueFilename}`;
     const writeStream = createWriteStream(filePath);
     writeStream.write(buffer);
 
-    // Store the file ID in memory
-    this.fileRecords[id] = `${folderName}/${uniqueFilename}`;
-    console.log(this.fileRecords);
+    // // Store the file ID in memory
+    // this.fileRecords[id] = `${folderName}/${uniqueFilename}`;
+    // console.log(this.fileRecords);
+
+    // Store the file record in MongoDB with URL and file path
+    if (folder) {
+      await this.fileRecordModel.createFileRecord(
+        id,
+        uniqueFilename,
+        folderName,
+        url,
+        filePath,
+        folder._id,
+      );
+    } else {
+      throw new BadRequestException('folder with this name does not exists');
+    }
 
     return {
       id,
-      url: `http://localhost:3000/uploads/${folderName}/${uniqueFilename}`, // Update with your server's URL
+      url,
       filename: uniqueFilename,
     };
   }
 
+  // async getAllFiles(
+  //   folderName: string,
+  // ): Promise<{ filename: string; size: number; url: string }[]> {
+  //   const folderPath = `uploads/${folderName}`;
+
+  //   if (!existsSync(folderPath)) {
+  //     throw new BadRequestException(`Folder '${folderName}' does not exist.`);
+  //   }
+
+  //   try {
+  //     const files = readdirSync(folderPath);
+  //     const fileDetails: { filename: string; size: number; url: string }[] = [];
+
+  //     for (const filename of files) {
+  //       const filePath = `${folderPath}/${filename}`;
+  //       const fileStats = statSync(filePath);
+
+  //       fileDetails.push({
+  //         filename,
+  //         size: fileStats.size, // Size of the file in bytes
+  //         url: `http://localhost:3000/uploads/${folderName}/${filename}`,
+  //       });
+  //     }
+
+  //     return fileDetails;
+  //   } catch (error) {
+  //     throw new BadRequestException(
+  //       `Failed to retrieve files from folder '${folderName}'.`,
+  //     );
+  //   }
+  // }
+
+  // async deleteFolder(folderName: string): Promise<string> {
+  //   const directory = `uploads/${folderName}`;
+
+  //   if (!fs.existsSync(directory)) {
+  //     throw new BadRequestException(`Folder '${folderName}' does not exist.`);
+  //   }
+
+  //   await fs.rmdirSync(directory, { recursive: true });
+  //   return `Folder '${folderName}' and its contents have been deleted.`;
+  // }
+
+  async getAllFolders() {
+    return await this.folderModel.getAllFolders();
+  }
+
+  async getFileById(id: string) {
+    return await this.fileRecordModel.getFileRecord(id);
+  }
+
   async getAllFiles(
     folderName: string,
-  ): Promise<{ filename: string; size: number; url: string }[]> {
-    const folderPath = `uploads/${folderName}`;
-
-    if (!existsSync(folderPath)) {
-      throw new BadRequestException(`Folder '${folderName}' does not exist.`);
-    }
-
+  ): Promise<{ fileId: string; filename: string; url: string }[]> {
     try {
-      const files = readdirSync(folderPath);
-      const fileDetails: { filename: string; size: number; url: string }[] = [];
+      const folderPath = `uploads/${folderName}`;
+      if (!existsSync(folderPath)) {
+        throw new BadRequestException(`Folder '${folderName}' does not exist.`);
+      }
 
-      for (const filename of files) {
-        const filePath = `${folderPath}/${filename}`;
-        const fileStats = statSync(filePath);
+      // If the folder doesn't exist in MongoDB, create it
+      const folder = await this.folderModel.findFolder(folderName);
 
+      if (!folder) {
+        throw new BadRequestException(`Folder '${folderName}' does not exist.`);
+      }
+
+      // Query the database to find all files associated with the folder
+      const files = await this.fileRecordModel.getfileFromFolder(folderName);
+
+      if (!files || files.length === 0) {
+        throw new BadRequestException(
+          `No files found in folder '${folderName}'.`,
+        );
+      }
+
+      const fileDetails: { fileId: string; filename: string; url: string }[] =
+        [];
+
+      for (const file of files) {
         fileDetails.push({
-          filename,
-          size: fileStats.size, // Size of the file in bytes
-          url: `http://localhost:3000/uploads/${folderName}/${filename}`,
+          fileId: file.fileId,
+          filename: file.filename,
+          url: file.url,
         });
       }
 
@@ -93,16 +179,40 @@ export class FileUploadService {
       throw new BadRequestException(`Folder '${folderName}' does not exist.`);
     }
 
-    await fs.rmdirSync(directory, { recursive: true });
+    // Delete all files in the folder and their associated records
+    const filesInFolder = readdirSync(directory);
+    for (const file of filesInFolder) {
+      const filePath = `${directory}/${file}`;
+      // Delete the file from the disk
+      fs.unlinkSync(filePath);
+      // Delete the associated file record from the database
+      await this.fileRecordModel.deleteFile(filePath);
+    }
+
+    // Delete the folder and its associated records from the database
+    await this.folderModel.deleteFolder(folderName);
+
+    // Delete the folder and its contents from the filesystem
+    fs.rmdirSync(directory, { recursive: true });
+
     return `Folder '${folderName}' and its contents have been deleted.`;
   }
 
   async deleteFile(id: string): Promise<string> {
-    const filePath = `uploads/${this.fileRecords[id]}`;
+    // const filePath = `uploads/${this.fileRecords[id]}`;
 
-    if (!this.fileRecords[id] || !existsSync(filePath)) {
+    // if (!this.fileRecords[id] || !existsSync(filePath)) {
+    //   throw new BadRequestException(`File with ID '${id}' does not exist.`);
+    // }
+
+    // Fetch the file record from MongoDB
+    const fileRecord = await this.fileRecordModel.getFileRecord(id);
+
+    if (!fileRecord) {
       throw new BadRequestException(`File with ID '${id}' does not exist.`);
     }
+
+    const { filePath } = fileRecord;
 
     // Delete the file
     try {
@@ -112,21 +222,24 @@ export class FileUploadService {
     }
 
     // Optionally, delete the folder if it's empty
-    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+    // const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
 
-    try {
-      const filesInFolder = readdirSync(folderPath);
+    // try {
+    //   const filesInFolder = readdirSync(folderPath);
 
-      if (filesInFolder.length === 0) {
-        rmdirSync(folderPath);
-      }
-    } catch (error) {
-      // Handle any errors that occur while checking the folder
-      console.error(`Error checking folder: ${error}`);
-    }
+    //   if (filesInFolder.length === 0) {
+    //     rmdirSync(folderPath);
+    //   }
+    // } catch (error) {
+    //   // Handle any errors that occur while checking the folder
+    //   console.error(`Error checking folder: ${error}`);
+    // }
 
-    // Remove the file ID from memory
-    delete this.fileRecords[id];
+    // // Remove the file ID from memory
+    // delete this.fileRecords[id];
+
+    // Delete the file record from MongoDB
+    await this.fileRecordModel.deleteFileRecord(id);
 
     return `File with ID '${id}' has been deleted.`;
   }
