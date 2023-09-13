@@ -62,6 +62,10 @@ $ npm run test:cov
 
 This document provides information about the File Upload API endpoints and their usage.
 
+# Link to postMan collection 
+
+https://elements.getpostman.com/redirect?entityId=9715977-dcd153ce-f297-4f8c-a1a9-a1ac4b2cdfd1&entityType=collection
+
 ## Table of Contents
 
 1. [Create Folder](#create-folder)
