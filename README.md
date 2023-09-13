@@ -57,6 +57,8 @@ $ npm run test:e2e
 # test coverage
 $ npm run test:cov
 ```
+#Mongodb 
+Please change mongodb url in app.module.ts 
 
 # File Upload API Documentation
 
@@ -64,7 +66,10 @@ This document provides information about the File Upload API endpoints and their
 
 # Link to postMan collection 
 
+public work space
 https://elements.getpostman.com/redirect?entityId=9715977-dcd153ce-f297-4f8c-a1a9-a1ac4b2cdfd1&entityType=collection
+
+#Postman workspace
 [Postman](https://www.postman.com/nileshgarg001/workspace/worksharing/collection/9715977-dcd153ce-f297-4f8c-a1a9-a1ac4b2cdfd1?action=share&creator=9715977)
 
 ## Table of Contents
