@@ -80,7 +80,6 @@ This document provides information about the File Upload API endpoints and their
 2. [Upload File](#upload-file)
 3. [Get File by ID](#get-file-by-id)
 4. [List Files in a Folder](#list-files-in-a-folder)
-5. [Create Folder (Again)](#create-folder-again)
 
 ---
 
