@@ -5,8 +5,8 @@ export interface FileRecord extends Document {
   fileId: string;
   filename: string;
   folderName: string;
-  url: string; // New URL field
-  filePath: string; // New file path field
+  url: string; 
+  filePath: string; 
   folder: Folder;
 }
 
@@ -19,4 +19,3 @@ export const FileRecordSchema = new Schema({
   folder: { type: Schema.Types.ObjectId, ref: 'Folder' },
 });
 
-// export const FileRecord = model('FileRecord', FileRecordSchema);
